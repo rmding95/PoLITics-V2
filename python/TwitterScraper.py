@@ -1,11 +1,9 @@
 import twitter
-from Tweet import Tweet
-import sqlite3
 import csv
 import json
 import urllib
-import boto3
-
+import peewee
+from peewee import *
 
 def createQuery(file):
     query = 'q='
@@ -63,18 +61,30 @@ def getTweets(query, party):
                 if locationsent == 1:
                     break
 
+
+class Tweet:
+    def __init__(self, latitude, longitude, party, timestamp):
+        self.latitude = latitude
+        self.longitude = longitude
+        self.party = party
+        self.timestamp = timestamp
+
 api = twitter.Api(consumer_key='rnBTENQ1GCJdZLVEuZheV6YJ6',
                   consumer_secret='b9g5TgNIXRKN7lwQxh5YcLk8AI59zQK3zzIAtAorspMHpUha3F',
                   access_token_key='787504691949076481-jwZbK3F3lc5evdzeExZO0DRj4LvWB1m',
                   access_token_secret='Q8DGppRwEFKWo5ZxbAjXCQUGAqBgCMU0t4ZI21RGoND3T')
 
-republican_file = open('republican_hashtags.txt', 'r')
-democrat_file = open('democrat_hashtags.txt', 'r')
+db = MySQLDatabase('politicsdb', host='politicsdb.cdcme9z9rkbx.us-west-2.rds.amazonaws.com',
+                   port=3306, user='richardding')
+db.connect()
+
+republican_file = open('../data/republican_hashtags.txt', 'r')
+democrat_file = open('../data/democrat_hashtags.txt', 'r')
 # q=%23Trump%2C%20OR%20%23Hillary%2C%20OR%20%23Kane&count=100
 republican_query = createQuery(republican_file)
 democrat_query = createQuery(democrat_file)
 
-with open('StateZip.csv', mode='r') as infile:
+with open('../data/StateZip.csv', mode='r') as infile:
     reader = csv.reader(infile)
     mydict = [[rows[0], rows[1], rows[2]] for rows in reader]
 
@@ -83,7 +93,7 @@ with open('StateZip.csv', mode='r') as infile:
 mydict2 = {}
 for state in mydict:
     currentlist = []
-    with open('Zipcodes.csv', mode='r') as infile:
+    with open('../data/Zipcodes.csv', mode='r') as infile:
         reader = csv.reader(infile)
         for row in reader:
             if row[4] == state[0]:
@@ -96,19 +106,6 @@ for i in range(0, 20):
     getTweets(democrat_query, 'Democrat')
 print(tweets)
 
-dynamodb = boto3.resource('dynamodb')
-table = dynamodb.Table('Tweets')
 for tweet in tweets:
-    temp = {
-        'time': str(tweet.timestamp),
-        'data': ''
-    }
-    response = table.put_item(
-        Item={
-            'time': str(tweet.timestamp),
-            'lat': str(tweet.latitude),
-            'long': str(tweet.longitude),
-            'party': str(tweet.party)
-        }
-    )
+    print(tweet)
 
